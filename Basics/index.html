@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Hover Effect</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+    body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+.hover-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    color: white;
+    background-color: blue;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: color 0.4s;
+}
+
+.hover-button::after {
+    content: "";
+    position: absolute;
+    bottom: 0; 
+    left: -100%;
+    width: 100%;
+    height: 10%;
+    background-color: red;
+    transition: left 0.4s;
+    z-index: 0;
+}
+
+.hover-button:hover::after {
+    left: 0;
+}
+
+.hover-button:hover {
+    color: white;
+    }
+
+
+
+    </style>
+</head>
+<body>
+    <button class="hover-button">Hover me!</button>
+</body>
+</html>
