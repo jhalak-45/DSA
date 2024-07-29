@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualization using Kruskal's Algorithm</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            margin-top: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-group {
+            margin: 10px 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 500px;
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .canvas-container canvas {
+            border: 2px solid #666768;
+            background-color: #ffffff;
+        }
+
+        .hint {
+            font-size: 0.9em;
+            color: gray;
+        }
+
+        .info {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .btn-info, .btn-success, .btn-warning {
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid px-3">
+        <h1 class="text-center my-4 px-2"> Kruskal's Algorithm for MST</h1>
+        <div class="form-group">
+            <label for="vertexCount">Number of vertices:</label>
+            <input type="number" class="form-control" id="vertexCount" min="2" max="10" required>
+            <small class="form-text text-muted">Enter a number between 2 and 10.</small>
+            <button class="btn btn-primary mt-2" onclick="createVerticesInput()">Create Vertices Input</button>
+        </div>
+        <div id="verticesInput" class="form-group row"></div>
+        <div class="row">
+            <div class="form-group col-md-8">
+                <label for="edgeStart">Edge Start:</label>
+                <input type="text" class="form-control" id="edgeStart" placeholder="Enter the name of the starting vertex." required>
+                <label for="edgeEnd">Edge End:</label>
+                <input type="text" class="form-control" id="edgeEnd" placeholder="Enter the name of the ending vertex." required>
+                <label for="edgeWeight">Edge Weight:</label>
+                <input type="number" class="form-control" id="edgeWeight" placeholder="Enter a positive number for the edge weight." required>
+                <button class="btn btn-secondary mt-2" onclick="addEdge()">Add Edge</button>
+            </div>
+            <div class="col-md-4 py-4 mt-1">
+                <button class="btn btn-info my-2" data-toggle="modal" data-target="#aboutModal">About Kruskal's Algorithm</button>
+                <button class="btn btn-success my-2" onclick="kruskalAlgorithm()">Run Kruskal's Algorithm</button>
+                <button class="btn btn-warning my-2" onclick="downloadGraph()">Download Graph</button>
+            </div>
+        </div>
+        <div class="canvas-container container-fluid px-0 m-0 px-sm-0">
+            <canvas id="graphCanvas" height="550"></canvas>
+        </div>
+        <div class="info">
+            <p id="totalWeight">Total Weight of Graph: 0</p>
+            <p id="mstWeight">Total Weight after Spanning: 0</p>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel">About Kruskal's Algorithm</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Kruskal's Algorithm is a minimum spanning tree algorithm that finds an edge subset of a connected weighted graph. It includes every vertex in the graph while minimizing the total edge weight.</p>
+                    <p>The algorithm operates by sorting all the edges in non-decreasing order of their weights. It then adds edges to the spanning tree, ensuring no cycles are formed, until all vertices are included in the spanning tree.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        let vertices = [];
+        let edges = [];
+        let mstEdges = [];  // Store MST edges
+
+        function createVerticesInput() {
+            const vertexCount = document.getElementById('vertexCount').value;
+            const verticesInputDiv = document.getElementById('verticesInput');
+            verticesInputDiv.innerHTML = '';
+
+            for (let i = 0; i < vertexCount; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'vertex' + i;
+                input.className = 'form-control my-2';
+                input.placeholder = 'Vertex ' + (i + 1) + ' name';
+                input.required = true;
+                verticesInputDiv.appendChild(input);
+            }
+
+            const button = document.createElement('button');
+            button.textContent = 'Create Vertices';
+            button.className = 'btn btn-primary mt-2';
+            button.onclick = createVertices;
+            verticesInputDiv.appendChild(button);
+        }
+
+        function createVertices() {
+            const vertexCount = document.getElementById('vertexCount').value;
+            vertices = [];
+
+            for (let i = 0; i < vertexCount; i++) {
+                const name = document.getElementById('vertex' + i).value || 'Vertex ' + i;
+                vertices.push({ name: name, x: Math.random() * (graphCanvas.width - 30) + 15, y: Math.random() * (graphCanvas.height - 30) + 15 });
+            }
+
+            drawGraph(graphCtx, vertices, edges);
+            updateTotalWeight();
+        }
+
+        function addEdge() {
+            const startName = document.getElementById('edgeStart').value;
+            const endName = document.getElementById('edgeEnd').value;
+            const weight = document.getElementById('edgeWeight').value;
+
+            const start = vertices.findIndex(vertex => vertex.name === startName);
+            const end = vertices.findIndex(vertex => vertex.name === endName);
+
+            if (start !== -1 && end !== -1 && start !== end) {
+                edges.push({ start: start, end: end, weight: parseInt(weight) });
+                drawGraph(graphCtx, vertices, edges);
+                updateTotalWeight();
+            } else {
+                alert('Invalid edge input.');
+            }
+        }
+
+        function drawGraph(ctx, vertices, edges) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            ctx.strokeStyle = '#007bff';
+            ctx.fillStyle = '#28a745';
+            ctx.font = '12px Arial';
+
+            // Draw edges
+            edges.forEach(edge => {
+                const start = vertices[edge.start];
+                const end = vertices[edge.end];
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                ctx.closePath();
+
+                // Draw weight
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                ctx.fillText(edge.weight, midX + 5, midY - 5);
+            });
+
+            // Draw vertices
+            vertices.forEach((vertex, index) => {
+                ctx.beginPath();
+                ctx.arc(vertex.x, vertex.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+
+                // Draw vertex name
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText(vertex.name, vertex.x - 10, vertex.y + 5);
+                ctx.fillStyle = '#28a745';
+            });
+        }
+
+        function drawMSTEdges(ctx, mstEdges) {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+
+            mstEdges.forEach(edge => {
+                const start = vertices[edge.start];
+                const end = vertices[edge.end];
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                ctx.closePath();
+            });
+
+            ctx.lineWidth = 1;
+        }
+
+        function kruskalAlgorithm() {
+            edges.sort((a, b) => a.weight - b.weight);
+
+            const parent = [];
+            const rank = [];
+            mstEdges = [];
+
+            function find(v) {
+                if (parent[v] !== v) {
+                    parent[v] = find(parent[v]);
+                }
+                return parent[v];
+            }
+
+            function union(v1, v2) {
+                const root1 = find(v1);
+                const root2 = find(v2);
+
+                if (root1 !== root2) {
+                    if (rank[root1] > rank[root2]) {
+                        parent[root2] = root1;
+                    } else if (rank[root1] < rank[root2]) {
+                        parent[root2] = root2;
+                    } else {
+                        parent[root2] = root1;
+                        rank[root1]++;
+                    }
+                }
+            }
+
+            vertices.forEach((_, i) => {
+                parent[i] = i;
+                rank[i] = 0;
+            });
+
+            edges.forEach(edge => {
+                const { start, end, weight } = edge;
+                if (find(start) !== find(end)) {
+                    union(start, end);
+                    mstEdges.push(edge);
+                }
+            });
+
+            drawGraph(graphCtx, vertices, edges);
+            drawMSTEdges(graphCtx, mstEdges);
+            updateMSTWeight(mstEdges);
+        }
+
+        function updateTotalWeight() {
+            const totalWeight = edges.reduce((sum, edge) => sum + edge.weight, 0);
+            document.getElementById('totalWeight').textContent = `Total Weight of Graph: ${totalWeight}`;
+        }
+
+        function updateMSTWeight(mstEdges) {
+            const mstWeight = mstEdges.reduce((sum, edge) => sum + edge.weight, 0);
+            document.getElementById('mstWeight').textContent = `Total Weight after Spanning: ${mstWeight}`;
+        }
+
+        function downloadGraph() {
+            // Create a new canvas for the downloaded image
+            const downloadCanvas = document.createElement('canvas');
+            downloadCanvas.width = graphCanvas.width;
+            downloadCanvas.height = graphCanvas.height;
+            const downloadCtx = downloadCanvas.getContext('2d');
+
+            // Draw a white background
+            downloadCtx.fillStyle = 'white';
+            downloadCtx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+            // Draw the graph on the white background
+            drawGraph(downloadCtx, vertices, edges);
+
+            // Draw the MST edges on the same canvas
+            drawMSTEdges(downloadCtx, mstEdges);
+
+            // Create a link and download the image
+            const link = document.createElement('a');
+            link.href = downloadCanvas.toDataURL('image/png');
+            link.download = 'solved_graph.png';
+            link.click();
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
